@@ -24,8 +24,24 @@ func MakeTerrain(width, height int) *Terrain {
 	return t
 }
 
+func (t *Terrain) Copy() *Terrain {
+	t2 := MakeTerrain(t.width, t.height)
+	copy(t2.height_map, t.height_map)
+	return t2
+}
+
 func (t *Terrain) HeightAt(x, y int) float64 {
-	return t.height_map[y*t.width+x]
+	if x >= 0 && y >= 0 && x <= t.width-1 && y <= t.height-1 {
+		return t.height_map[y*t.width+x]
+	}
+	return 0
+}
+
+func (t *Terrain) AdjustHeightAt(x, y int, dh, h_min, h_max float64) {
+	if x >= 0 && y >= 0 && x <= t.width-1 && y <= t.height-1 {
+		h := math.Min(math.Max(t.height_map[y*t.width+x]+dh, h_min), h_max)
+		t.height_map[y*t.width+x] = h
+	}
 }
 
 // sample terrain at a float location on the height map
@@ -68,6 +84,34 @@ func (t *Terrain) AccelerationAtFractional(x, y float64) (ax, ay float64) {
 	return xb - xa, yb - ya
 }
 
+func (t *Terrain) AdjustTerrainAt(x, y, dh float64) {
+	// find which corner coordinates. and what percent along x and y of the cell
+	x0f, xt := math.Modf(x)
+	y0f, yt := math.Modf(y)
+	x0 := int(x0f)
+	y0 := int(y0f)
+	x1 := x0 + 1
+	y1 := y0 + 1
+
+	h_min := math.Inf(1)
+	h_max := math.Inf(-1)
+	hs := [4]float64{
+		t.HeightAt(x0, y0),
+		t.HeightAt(x1, y0),
+		t.HeightAt(x0, y1),
+		t.HeightAt(x1, y1),
+	}
+	for _, h := range hs {
+		h_min = math.Min(h_min, h)
+		h_max = math.Max(h_max, h)
+	}
+
+	t.AdjustHeightAt(x0, y0, dh*(1.0-xt)*(1.0-yt), h_min, h_max)
+	t.AdjustHeightAt(x1, y0, dh*(xt)*(1.0-yt), h_min, h_max)
+	t.AdjustHeightAt(x0, y1, dh*(1.0-xt)*(yt), h_min, h_max)
+	t.AdjustHeightAt(x1, y1, dh*(xt)*(yt), h_min, h_max)
+}
+
 func Interp(a, b, c, d, x float64) float64 {
 	return x*(x*(x*(-a+b-c+d)+2*a-2*b+c-d)-a+c) + b
 }
@@ -91,8 +135,8 @@ func SampleRand(seed, x, y int64) float64 {
 }
 
 func (t *Terrain) GenerateTerrain(seed int64) {
-	var amplitude float64 = 1
-	var period float64 = 32
+	var amplitude float64 = 4
+	var period float64 = 16
 
 	var p_i int64
 	for p_i = 0; p_i < 4; p_i++ {
@@ -162,14 +206,35 @@ func (t *Terrain) SavePNG(path string) {
 
 }
 
+func (t *Terrain) ScaleUp(scale int) *Terrain {
+	new_t := MakeTerrain(t.width*scale, t.height*scale)
+
+	scale_x := float64(t.width-1) / float64(new_t.width-1)
+	scale_y := float64(t.height-1) / float64(new_t.height-1)
+
+	i := 0
+	for y := 0; y < new_t.height; y++ {
+		for x := 0; x < new_t.width; x++ {
+			new_t.height_map[i] = t.HeightAtFractional(float64(x)*scale_x, float64(y)*scale_y)
+			i++
+		}
+	}
+	return new_t
+}
+
 func main() {
 	fmt.Println("ITCS-4102 Term Project: Mountain Map")
 	fmt.Println()
 
-	t := MakeTerrain(128, 128)
+	t := MakeTerrain(64, 64)
 	t.GenerateTerrain(11)
-	t.SavePNG("test3.png")
-	t.RunErosionSimulation()
+	t4 := t.ScaleUp(4)
+	t4.SavePNG("text_8x.png")
+	t4.RunErosionSimulation(10000)
+	t4.SavePNG("text_8x_sim.png")
+	// fmt.Println(t.HeightAtFractional(127, 127))
+	// t.SavePNG("test512.png")
+	// t.RunErosionSimulation()
 
 	// fmt.Printf("%d %d %d\n", t.width, t.height, len(t.height_map))
 	// overall process:
