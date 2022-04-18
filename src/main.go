@@ -226,12 +226,25 @@ func main() {
 	fmt.Println("ITCS-4102 Term Project: Mountain Map")
 	fmt.Println()
 
-	t := MakeTerrain(64, 64)
-	t.GenerateTerrain(11)
+	fmt.Print("Enter a Grid Size: ")
+	var grid_size int
+	fmt.Scanf("%d", &grid_size)
+
+	fmt.Print("Enter a seed for random generation: ")
+	var seed int64
+	fmt.Scanf("%d", &seed)
+
+	fmt.Print("Enter the file name: ")
+	var file_name string
+	fmt.Scanf("%s", &file_name)
+
+
+	t := MakeTerrain(grid_size, grid_size)
+	t.GenerateTerrain(seed)
 	t4 := t.ScaleUp(4)
-	t4.SavePNG("text_8x.png")
+	t4.SavePNG(fmt.Sprintf("%s.png", file_name))
 	t4.RunErosionSimulation(10000)
-	t4.SavePNG("text_8x_sim.png")
+	t4.SavePNG(fmt.Sprintf("%s_sim.png", file_name))
 	// fmt.Println(t.HeightAtFractional(127, 127))
 	// t.SavePNG("test512.png")
 	// t.RunErosionSimulation()
