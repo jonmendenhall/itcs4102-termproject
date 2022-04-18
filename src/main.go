@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 )
 
 type Terrain struct {
@@ -105,7 +106,6 @@ func (t *Terrain) AdjustTerrainAt(x, y, dh float64) {
 		h_min = math.Min(h_min, h)
 		h_max = math.Max(h_max, h)
 	}
-
 	t.AdjustHeightAt(x0, y0, dh*(1.0-xt)*(1.0-yt), h_min, h_max)
 	t.AdjustHeightAt(x1, y0, dh*(xt)*(1.0-yt), h_min, h_max)
 	t.AdjustHeightAt(x0, y1, dh*(1.0-xt)*(yt), h_min, h_max)
@@ -140,34 +140,43 @@ func (t *Terrain) GenerateTerrain(seed int64) {
 
 	var p_i int64
 	for p_i = 0; p_i < 4; p_i++ {
-		i := 0
 		fmt.Println("LAYER")
+		var wg sync.WaitGroup
 		for y := 0; y < t.height; y++ {
-			for x := 0; x < t.width; x++ {
-				xp := float64(x) / period
-				yp := float64(y) / period
-				x0 := int64(xp)
-				y0 := int64(yp)
-				xt := xp - float64(x0)
-				yt := yp - float64(y0)
-
-				var samples [4]float64
-				var s_i int64
-				for s_i = 0; s_i < 4; s_i++ {
-					samples[s_i] = Interp(
-						SampleRand(p_i+seed, x0-1, y0-1+s_i),
-						SampleRand(p_i+seed, x0, y0-1+s_i),
-						SampleRand(p_i+seed, x0+1, y0-1+s_i),
-						SampleRand(p_i+seed, x0+2, y0-1+s_i),
-						xt,
-					)
-				}
-				t.height_map[i] += Interp(samples[0], samples[1], samples[2], samples[3], yt) * amplitude
-				i++
-			}
+			wg.Add(1)
+			go terrianParrallism(&wg, t, period, amplitude, y, p_i, int64(seed))
 		}
+		wg.Wait()
 		amplitude /= 2
 		period /= 2
+	}
+}
+
+func terrianParrallism(wg *sync.WaitGroup, t *Terrain, period, amplitude float64, y int, p_i int64, seed int64) {
+	defer wg.Done()
+	var i = y * t.width
+
+	for x := 0; x < t.width; x++ {
+		xp := float64(x) / period
+		yp := float64(y) / period
+		x0 := int64(xp)
+		y0 := int64(yp)
+		xt := xp - float64(x0)
+		yt := yp - float64(y0)
+
+		var samples [4]float64
+		var s_i int64
+		for s_i = 0; s_i < 4; s_i++ {
+			samples[s_i] = Interp(
+				SampleRand(p_i+seed, x0-1, y0-1+s_i),
+				SampleRand(p_i+seed, x0, y0-1+s_i),
+				SampleRand(p_i+seed, x0+1, y0-1+s_i),
+				SampleRand(p_i+seed, x0+2, y0-1+s_i),
+				xt,
+			)
+		}
+		t.height_map[i] += Interp(samples[0], samples[1], samples[2], samples[3], yt) * amplitude
+		i++
 	}
 }
 
@@ -203,7 +212,6 @@ func (t *Terrain) SavePNG(path string) {
 	}
 	defer file.Close()
 	png.Encode(file, img)
-
 }
 
 func (t *Terrain) ScaleUp(scale int) *Terrain {
@@ -223,8 +231,6 @@ func (t *Terrain) ScaleUp(scale int) *Terrain {
 }
 
 func main() {
-	fmt.Println("ITCS-4102 Term Project: Mountain Map")
-	fmt.Println()
 
 	t := MakeTerrain(64, 64)
 	t.GenerateTerrain(11)
