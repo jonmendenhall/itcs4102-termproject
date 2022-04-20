@@ -16,6 +16,7 @@ type Terrain struct {
 	height_map []float64
 }
 
+// initialize a new terrain instance
 func MakeTerrain(width, height int) *Terrain {
 	t := new(Terrain)
 	t.width = width
@@ -24,12 +25,14 @@ func MakeTerrain(width, height int) *Terrain {
 	return t
 }
 
+// create a duplicate terrain instance
 func (t *Terrain) Copy() *Terrain {
 	t2 := MakeTerrain(t.width, t.height)
 	copy(t2.height_map, t.height_map)
 	return t2
 }
 
+// retreive the height of the terrain at a certain location
 func (t *Terrain) HeightAt(x, y int) float64 {
 	if x >= 0 && y >= 0 && x <= t.width-1 && y <= t.height-1 {
 		return t.height_map[y*t.width+x]
@@ -37,6 +40,7 @@ func (t *Terrain) HeightAt(x, y int) float64 {
 	return 0
 }
 
+// safely adjust the height of the terrain at a given location within some specific bounds
 func (t *Terrain) AdjustHeightAt(x, y int, dh, h_min, h_max float64) {
 	if x >= 0 && y >= 0 && x <= t.width-1 && y <= t.height-1 {
 		h := math.Min(math.Max(t.height_map[y*t.width+x]+dh, h_min), h_max)
@@ -93,6 +97,7 @@ func (t *Terrain) AdjustTerrainAt(x, y, dh float64) {
 	x1 := x0 + 1
 	y1 := y0 + 1
 
+	// find binds of adjustment based on the height at each location in this cell
 	h_min := math.Inf(1)
 	h_max := math.Inf(-1)
 	hs := [4]float64{
@@ -106,12 +111,14 @@ func (t *Terrain) AdjustTerrainAt(x, y, dh float64) {
 		h_max = math.Max(h_max, h)
 	}
 
+	// adjust corner values weighted by location within the cell
 	t.AdjustHeightAt(x0, y0, dh*(1.0-xt)*(1.0-yt), h_min, h_max)
 	t.AdjustHeightAt(x1, y0, dh*(xt)*(1.0-yt), h_min, h_max)
 	t.AdjustHeightAt(x0, y1, dh*(1.0-xt)*(yt), h_min, h_max)
 	t.AdjustHeightAt(x1, y1, dh*(xt)*(yt), h_min, h_max)
 }
 
+// perform cubic interpolation
 func Interp(a, b, c, d, x float64) float64 {
 	return x*(x*(x*(-a+b-c+d)+2*a-2*b+c-d)-a+c) + b
 }
@@ -137,6 +144,7 @@ func SampleRand(seed, x, y int64) float64 {
 func (t *Terrain) GenerateTerrain(seed int64) {
 	fmt.Println("Generating initial terrain with noise...")
 
+	// initial layer properties
 	var amplitude float64 = 100
 	var period float64 = 16
 
@@ -146,6 +154,7 @@ func (t *Terrain) GenerateTerrain(seed int64) {
 		fmt.Printf("[Layer %d] period=%.2f  amplitude=%.2f\n", p_i+1, period, amplitude)
 		for y := 0; y < t.height; y++ {
 			for x := 0; x < t.width; x++ {
+				// find which cell in the noise layer this corresponds to
 				xp := float64(x) / period
 				yp := float64(y) / period
 				x0 := int64(xp)
@@ -156,6 +165,7 @@ func (t *Terrain) GenerateTerrain(seed int64) {
 				var samples [4]float64
 				var s_i int64
 				for s_i = 0; s_i < 4; s_i++ {
+					// cubic interpolation on sampling across each row
 					samples[s_i] = Interp(
 						SampleRand(p_i+seed, x0-1, y0-1+s_i),
 						SampleRand(p_i+seed, x0, y0-1+s_i),
@@ -164,10 +174,12 @@ func (t *Terrain) GenerateTerrain(seed int64) {
 						xt,
 					)
 				}
+				// cubic interpolation based on resulting row samples for the entire cell
 				t.height_map[i] += Interp(samples[0], samples[1], samples[2], samples[3], yt) * amplitude
 				i++
 			}
 		}
+		// move to higher frequency (lower period) waves with lower amplitude
 		amplitude *= 0.3
 		period *= 0.5
 	}
@@ -228,7 +240,6 @@ func main() {
 	// overall process:
 	// - generate starting map using layered perlin noise
 	// - run erosion simulation to update terrain
-	// - make path between 2 points on map
 
 	// can view heightmaps at http://www.procgenesis.com/SimpleHMV/simplehmv.html
 
