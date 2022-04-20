@@ -135,13 +135,15 @@ func SampleRand(seed, x, y int64) float64 {
 }
 
 func (t *Terrain) GenerateTerrain(seed int64) {
+	fmt.Println("Generating initial terrain with noise...")
+
 	var amplitude float64 = 100
 	var period float64 = 16
 
 	var p_i int64
 	for p_i = 0; p_i < 4; p_i++ {
 		i := 0
-		fmt.Println("LAYER")
+		fmt.Printf("[Layer %d] period=%.2f  amplitude=%.2f\n", p_i+1, period, amplitude)
 		for y := 0; y < t.height; y++ {
 			for x := 0; x < t.width; x++ {
 				xp := float64(x) / period
@@ -203,7 +205,7 @@ func (t *Terrain) SavePNG(path string) {
 	}
 	defer file.Close()
 	png.Encode(file, img)
-
+	fmt.Printf("Image saved as %s\n", path)
 }
 
 func (t *Terrain) ScaleUp(scale int) *Terrain {
@@ -223,21 +225,38 @@ func (t *Terrain) ScaleUp(scale int) *Terrain {
 }
 
 func main() {
-	fmt.Println("ITCS-4102 Term Project: Mountain Map")
-	fmt.Println()
-
-	t := MakeTerrain(64, 64)
-	t.GenerateTerrain(12)
-	t4 := t.ScaleUp(4)
-	t4.SavePNG("text_8x.png")
-	t4.RunErosionSimulation(4000)
-	t4.SavePNG("text_8x_sim.png")
-
-	// fmt.Printf("%d %d %d\n", t.width, t.height, len(t.height_map))
 	// overall process:
 	// - generate starting map using layered perlin noise
 	// - run erosion simulation to update terrain
 	// - make path between 2 points on map
 
 	// can view heightmaps at http://www.procgenesis.com/SimpleHMV/simplehmv.html
+
+	fmt.Println("ITCS-4102 Term Project: Mountain Map")
+	fmt.Println()
+
+	fmt.Print("Enter a Grid Size: ")
+	var grid_size int
+	fmt.Scanf("%d", &grid_size)
+
+	fmt.Print("Enter a seed for random generation: ")
+	var seed int64
+	fmt.Scanf("%d", &seed)
+
+	fmt.Print("Enter the file name: ")
+	var file_name string
+	fmt.Scanf("%s", &file_name)
+
+	// make initial terrain
+	t := MakeTerrain(grid_size, grid_size)
+	t.GenerateTerrain(seed)
+
+	// scale up for more detail
+	t4 := t.ScaleUp(4)
+	t4.SavePNG(fmt.Sprintf("%s.png", file_name))
+
+	// run simulation
+	t4.RunErosionSimulation(3000)
+	t4.SavePNG(fmt.Sprintf("%s_sim.png", file_name))
+
 }

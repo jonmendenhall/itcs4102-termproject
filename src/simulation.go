@@ -13,7 +13,7 @@ type RainDrop struct {
 }
 
 func (t *Terrain) RunErosionSimulation(num_drops int) {
-	fmt.Println("SIM")
+	fmt.Printf("Running erosion simulation with %d raindrops...\n", num_drops)
 
 	t_copy := t.Copy()
 
