@@ -51,8 +51,8 @@ func (t *Terrain) HeightAtFractional(x, y float64) float64 {
 	y0f, yt := math.Modf(y)
 	x0 := int(x0f)
 	y0 := int(y0f)
-	x1 := int(math.Ceil(x))
-	y1 := int(math.Ceil(y))
+	x1 := x0 + 1
+	y1 := y0 + 1
 
 	// sample height on top and bottom edges
 	a := t.HeightAt(x0, y0)*(1.0-xt) + t.HeightAt(x1, y0)*(xt)
@@ -135,7 +135,7 @@ func SampleRand(seed, x, y int64) float64 {
 }
 
 func (t *Terrain) GenerateTerrain(seed int64) {
-	var amplitude float64 = 4
+	var amplitude float64 = 100
 	var period float64 = 16
 
 	var p_i int64
@@ -166,8 +166,8 @@ func (t *Terrain) GenerateTerrain(seed int64) {
 				i++
 			}
 		}
-		amplitude /= 2
-		period /= 2
+		amplitude *= 0.3
+		period *= 0.5
 	}
 }
 
@@ -227,14 +227,11 @@ func main() {
 	fmt.Println()
 
 	t := MakeTerrain(64, 64)
-	t.GenerateTerrain(11)
+	t.GenerateTerrain(12)
 	t4 := t.ScaleUp(4)
 	t4.SavePNG("text_8x.png")
-	t4.RunErosionSimulation(10000)
+	t4.RunErosionSimulation(4000)
 	t4.SavePNG("text_8x_sim.png")
-	// fmt.Println(t.HeightAtFractional(127, 127))
-	// t.SavePNG("test512.png")
-	// t.RunErosionSimulation()
 
 	// fmt.Printf("%d %d %d\n", t.width, t.height, len(t.height_map))
 	// overall process:

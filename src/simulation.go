@@ -23,10 +23,9 @@ func (t *Terrain) RunErosionSimulation(num_drops int) {
 		drop.x = rand.Float64() * float64(t.width)
 		drop.y = rand.Float64() * float64(t.height)
 
-		var dt float64 = 0.1
-		// fmt.Printf("[%d] x=%.2f, y=%.2f\n", i, drop.x, drop.y)
+		var dt float64 = 0.05
 
-		for sim_i := 0; sim_i < 1000; sim_i++ {
+		for sim_i := 0; sim_i < 2000; sim_i++ {
 			// drop is off the grid
 			if drop.x < 0 || drop.y < 0 || drop.x > float64(t.width) || drop.y > float64(t.height) {
 				break
@@ -34,7 +33,7 @@ func (t *Terrain) RunErosionSimulation(num_drops int) {
 			// sample acceleration based on slope of terrain
 			ax, ay := t.AccelerationAtFractional(drop.x, drop.y)
 
-			momentum := 0.8
+			momentum := 0.999
 
 			// integrate acceleration to velocity
 			drop.vx = -ax*(1.0-momentum) + drop.vx*momentum
@@ -45,20 +44,17 @@ func (t *Terrain) RunErosionSimulation(num_drops int) {
 			drop.y += drop.vy * dt
 
 			// absorb some dirt
-			dh := 0.04
+			dh := 0.1
 			vel := math.Sqrt(drop.vx*drop.vx + drop.vy*drop.vy)
-			dh *= vel
-			// if drop.dirt < 500 {
+			dh *= (vel + 2)
 			t_copy.AdjustTerrainAt(drop.x, drop.y, -dh)
 			drop.dirt += dh
-			// }
 
 			// stop simulation of rain drop when stops moving
 			if sim_i > 100 && math.Abs(drop.vx) < 0.01 && math.Abs(drop.vy) < 0.01 {
 				break
 			}
 		}
-		fmt.Printf("[%d] x=%.2f, y=%.2f, dirt=%.2f\n", i, drop.x, drop.y, drop.dirt)
 		// deposit collected dirt at end position
 		t_copy.AdjustTerrainAt(drop.x, drop.y, drop.dirt*0.1)
 
